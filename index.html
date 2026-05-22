@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HidroSed Maestra · Hidráulica, Sedimentos y Socavación</title>
+  <meta name="description" content="Aplicación maestra para hidráulica fluvial, transporte de sedimentos, granulometría y socavación. Sin npm. Compatible con GitHub Pages." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="brand">
+      <img src="assets/icon.svg" alt="HidroSed" />
+      <div>
+        <p class="eyebrow">Aplicación maestra · GitHub Pages · Sin npm</p>
+        <h1>HidroSed Maestra</h1>
+        <p>Hidráulica, transporte de sedimentos, granulometría, lecho móvil y socavación generalizada.</p>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <button id="openTutorial" class="primary">Abrir tutorial</button>
+      <button id="runAllTop">Calcular todo</button>
+      <button id="saveLocalTop" class="ghost">Guardar</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Navegación principal">
+    <button class="tab is-active" data-tab="project">1. Proyecto</button>
+    <button class="tab" data-tab="sections">2. Secciones</button>
+    <button class="tab" data-tab="draw">3. Digitalizador</button>
+    <button class="tab" data-tab="gradation">4. Granulometría</button>
+    <button class="tab" data-tab="methods">5. Métodos</button>
+    <button class="tab" data-tab="results">6. Resultados</button>
+    <button class="tab" data-tab="mobile">7. Lecho móvil</button>
+    <button class="tab" data-tab="report">8. Reporte y tutorial</button>
+  </nav>
+
+  <main>
+    <section id="project" class="panel is-active">
+      <div class="grid two">
+        <article class="card">
+          <div class="card-head">
+            <h2>Datos generales</h2>
+            <span class="badge">Base DGA / MOP</span>
+          </div>
+          <div class="form-grid">
+            <label>Nombre del proyecto <input id="projectName" value="Estudio hidráulico y socavación" /></label>
+            <label>Cauce / quebrada / canal <input id="riverName" value="Cauce en estudio" /></label>
+            <label>Comuna / región <input id="locationName" value="Región de Coquimbo" /></label>
+            <label>Condición <select id="condition"><option>Sin Proyecto</option><option>Con Proyecto</option><option>Comparación preliminar</option></select></label>
+            <label>Periodo de retorno Tr (años) <input id="tr" type="number" step="1" min="1" value="100" /></label>
+            <label>Caudal de diseño global Q (m³/s) <input id="qGlobal" type="number" step="0.001" value="3.52" /></label>
+            <label>Pendiente global S (m/m) <input id="sGlobal" type="number" step="0.0001" value="0.013" /></label>
+            <label>Manning n global <input id="nGlobal" type="number" step="0.001" value="0.040" /></label>
+          </div>
+          <div class="toolbar">
+            <select id="presetSelect" title="Casos base PASM 157">
+              <option value="custom">Caso personalizado</option>
+              <option value="A2-1">PASM 157 · A2-1</option>
+              <option value="A2-2">PASM 157 · A2-2</option>
+              <option value="A2-3">PASM 157 · A2-3</option>
+              <option value="Andacollo">PASM 157 · Andacollo</option>
+            </select>
+            <button id="loadPreset">Cargar caso base</button>
+            <button id="makeSections">Generar N secciones</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h2>Generador de tramo</h2>
+            <span class="badge soft">N secciones</span>
+          </div>
+          <div class="form-grid">
+            <label>Número de secciones <input id="nSections" type="number" min="1" max="100" step="1" value="6" /></label>
+            <label>Separación por defecto Δx (m) <input id="dxDefault" type="number" step="0.1" value="40" /></label>
+            <label>Ancho basal/manual B (m) <input id="bDefault" type="number" step="0.1" value="8" /></label>
+            <label>Tirante inicial/manual y (m) <input id="yDefault" type="number" step="0.01" value="0.45" /></label>
+            <label>Talud lateral H:V <input id="zSideDefault" type="number" step="0.1" value="1.5" /></label>
+            <label>Cota fondo inicial (m) <input id="bed0" type="number" step="0.01" value="100.00" /></label>
+          </div>
+          <div class="note">
+            La aplicación puede trabajar con geometría dibujada/digitalizada o con una sección paramétrica trapezoidal. En las secciones dibujadas, se calcula la profundidad normal con Manning.
+          </div>
+        </article>
+      </div>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Lista de verificación técnica</h2>
+          <span class="badge">Presentación y revisión</span>
+        </div>
+        <div id="dgaChecklist" class="checklist"></div>
+      </article>
+    </section>
+
+    <section id="sections" class="panel">
+      <article class="card">
+        <div class="card-head">
+          <h2>Secciones transversales y tramos</h2>
+          <div class="toolbar slim">
+            <button id="addSection">Agregar sección</button>
+            <button id="reindexSections" class="ghost">Ordenar por distancia</button>
+            <button id="applyGlobals" class="ghost">Aplicar globales</button>
+            <button id="clearSections" class="danger">Limpiar</button>
+          </div>
+        </div>
+        <p class="muted">Marque si la sección pertenece a un tramo en curva y especifique lado interior/eje/exterior. El factor de curva se aplica como ajuste preliminar a socavación y alertas de estabilidad.</p>
+        <div class="table-wrap"><table id="sectionsTable"></table></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>Ingreso masivo</h2><span class="badge soft">CSV / Excel copiado</span></div>
+        <p class="muted">Pegue filas con columnas: id, distancia, dx, Q, S, n, B, y, talud, fondo, curva, lado, factor, D50, D84, D90/Ds90, Dm.</p>
+        <textarea id="pasteSections" rows="5" placeholder="S1,0,40,3.52,0.013,0.040,8,0.45,1.5,100,no,eje,1.00,28,84.4,118.67,28.17"></textarea>
+        <div class="toolbar"><button id="parseSections">Importar tabla</button><button id="copyExampleSections" class="ghost">Copiar ejemplo</button></div>
+      </article>
+    </section>
+
+    <section id="draw" class="panel">
+      <div class="grid two wide-left">
+        <article class="card">
+          <div class="card-head">
+            <h2>Digitalizador de sección</h2>
+            <span class="badge">Lápiz / puntos / imagen</span>
+          </div>
+          <div class="draw-top">
+            <label>Sección activa <select id="activeSection"></select></label>
+            <label>Escala horizontal total (m) <input id="scaleX" type="number" step="0.1" value="20" /></label>
+            <label>Escala vertical total (m) <input id="scaleY" type="number" step="0.1" value="5" /></label>
+            <label>Cota base de dibujo (m) <input id="zBottom" type="number" step="0.01" value="95" /></label>
+          </div>
+          <canvas id="sectionCanvas" width="1100" height="520"></canvas>
+          <div class="toolbar wrap">
+            <button id="modePencil" class="is-active">Lápiz</button>
+            <button id="modePoint">Puntos</button>
+            <button id="undoPoint" class="ghost">Deshacer</button>
+            <button id="clearCanvas" class="ghost">Limpiar</button>
+            <button id="exampleSection" class="ghost">Ejemplo</button>
+            <button id="saveGeometry" class="primary">Guardar geometría</button>
+            <label class="file-btn">Cargar imagen<input id="imageUpload" type="file" accept="image/*" /></label>
+          </div>
+          <p id="sectionStatus" class="status"></p>
+        </article>
+
+        <aside class="card tutorial-mini">
+          <h2>Cómo digitalizar</h2>
+          <ol>
+            <li>Cargue una imagen o dibuje directamente el perfil del cauce.</li>
+            <li>Defina escala horizontal, vertical y cota base.</li>
+            <li>Trace desde margen izquierda a margen derecha.</li>
+            <li>Presione <strong>Guardar geometría</strong>. La sección pasa a cálculo hidráulico.</li>
+          </ol>
+          <div class="note">La imagen se usa como fondo de digitalización. No hay reconocimiento automático de borde; el control sigue siendo técnico/manual.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="gradation" class="panel">
+      <div class="grid two wide-left">
+        <article class="card">
+          <div class="card-head"><h2>Curva granulométrica</h2><span class="badge">D10 · D50 · D84 · D90/Ds90 · Dm</span></div>
+          <p class="muted">Ingrese diámetros en mm y porcentaje que pasa. La interpolación de Dx se realiza en escala logarítmica.</p>
+          <div class="toolbar wrap">
+            <button id="addGrain">Agregar fila</button>
+            <button id="loadGrainExample" class="ghost">Ejemplo</button>
+            <button id="applyGrain" class="primary">Aplicar a secciones</button>
+          </div>
+          <div class="table-wrap small"><table id="grainTable"></table></div>
+          <textarea id="pasteGrain" rows="4" placeholder="Pegue granulometría: diámetro_mm, porcentaje_que_pasa"></textarea>
+          <div class="toolbar"><button id="parseGrain">Importar granulometría</button></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h2>Resumen granulométrico</h2><span class="badge soft">Interpolado</span></div>
+          <div id="grainSummary" class="metrics"></div>
+          <canvas id="grainCanvas" width="760" height="360"></canvas>
+          <div class="note">El Dm usado por Lischtvan-Levediev se estima como diámetro medio geométrico ponderado por intervalos de la curva granulométrica. Si la curva es incompleta, se usa D50 como respaldo.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="methods" class="panel">
+      <div class="grid two">
+        <article class="card">
+          <div class="card-head"><h2>Parámetros físicos y metodologías</h2><span class="badge">Cálculo</span></div>
+          <div class="form-grid">
+            <label>Densidad agua ρw (kg/m³) <input id="rhoW" type="number" step="1" value="1000" /></label>
+            <label>Densidad sedimento ρs (kg/m³) <input id="rhoS" type="number" step="1" value="2650" /></label>
+            <label>Porosidad lecho p (-) <input id="porosity" type="number" step="0.01" min="0" max="0.8" value="0.35" /></label>
+            <label>Factor μ LL <input id="muGlobal" type="number" step="0.01" value="1.00" /></label>
+            <label>Factor φ / mezcla LL <input id="gammaMix" type="number" step="0.01" value="1.00" /></label>
+            <label>θ crítico MPM <input id="thetaCrit" type="number" step="0.001" value="0.047" /></label>
+            <label>Factor suministro sólido <input id="supplyFactor" type="number" step="0.05" value="1.00" /></label>
+            <label>Seguridad socavación <input id="sfScour" type="number" step="0.05" value="1.00" /></label>
+          </div>
+          <div class="toggles">
+            <label><input id="roughnessCorrection" type="checkbox" checked /> Aplicar corrección preliminar de rugosidad MPM con D90/Ds90</label>
+            <label><input id="curveWarnings" type="checkbox" checked /> Activar advertencias por curvas/sinuosidad</label>
+          </div>
+        </article>
+        <article class="card method-notes">
+          <div class="card-head"><h2>Métodos incluidos</h2><span class="badge soft">Trazabilidad</span></div>
+          <ul>
+            <li><strong>Hidráulica:</strong> área, perímetro mojado, radio hidráulico, Manning, velocidad, Froude y tensión de fondo.</li>
+            <li><strong>Granulometría:</strong> interpolación logarítmica de Dx y cálculo de Dm.</li>
+            <li><strong>Transporte:</strong> Meyer-Peter-Müller para capacidad potencial de arrastre de fondo.</li>
+            <li><strong>Socavación:</strong> Lischtvan-Levediev para socavación generalizada y ajuste preliminar en curva.</li>
+            <li><strong>Lecho móvil:</strong> balance de continuidad sólida tipo Exner simplificado por tramos.</li>
+          </ul>
+          <div class="warning">La aplicación entrega una preevaluación técnica. Para expedientes, debe validarse con levantamiento topográfico, hidrología, rugosidad, modelación hidráulica y juicio profesional.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="results" class="panel">
+      <article class="card">
+        <div class="card-head">
+          <h2>Resultados integrados</h2>
+          <div class="toolbar slim">
+            <button id="runAll" class="primary">Calcular</button>
+            <button id="exportCSV">Exportar CSV</button>
+            <button id="exportJSON" class="ghost">Guardar JSON</button>
+            <label class="file-btn ghost">Importar JSON<input id="importJSON" type="file" accept="application/json" /></label>
+          </div>
+        </div>
+        <div id="resultSummary" class="metrics"></div>
+        <div id="warnings" class="warnings"></div>
+        <canvas id="profileCanvas" width="1200" height="420"></canvas>
+        <canvas id="sedCanvas" width="1200" height="360"></canvas>
+        <div class="table-wrap"><table id="resultsTable"></table></div>
+      </article>
+    </section>
+
+    <section id="mobile" class="panel">
+      <div class="grid two">
+        <article class="card">
+          <div class="card-head"><h2>Simulación simplificada de lecho móvil</h2><span class="badge">Exner</span></div>
+          <p class="muted">Evalúa tendencia erosión/deposición entre secciones con continuidad sólida. No sustituye un modelo morfodinámico.</p>
+          <div class="form-grid">
+            <label>Duración total (h) <input id="mobileHours" type="number" step="0.5" value="6" /></label>
+            <label>Paso temporal Δt (min) <input id="mobileDt" type="number" step="1" value="15" /></label>
+            <label>Gs de entrada aguas arriba (m³/h) <input id="upstreamSupply" type="number" step="0.01" value="0" /></label>
+            <label>Límite cambio por paso (m) <input id="maxDzStep" type="number" step="0.01" value="0.05" /></label>
+          </div>
+          <div class="toolbar"><button id="runMobile" class="primary">Simular lecho móvil</button><button id="exportMobileCSV">Exportar CSV</button></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h2>Resultados morfológicos</h2><span class="badge soft">Tendencia</span></div>
+          <div id="mobileSummary" class="metrics"></div>
+          <canvas id="mobileCanvas" width="780" height="360"></canvas>
+        </article>
+      </div>
+      <article class="card"><div class="table-wrap"><table id="mobileTable"></table></div></article>
+    </section>
+
+    <section id="report" class="panel">
+      <div class="grid two">
+        <article class="card">
+          <div class="card-head"><h2>Reporte técnico</h2><span class="badge">HTML imprimible</span></div>
+          <p class="muted">Genera un reporte editable con resumen metodológico, datos de entrada, resultados críticos, advertencias y tabla de cálculo.</p>
+          <div class="toolbar wrap">
+            <button id="exportReport" class="primary">Exportar reporte HTML</button>
+            <button id="copyMethodology">Copiar metodología</button>
+            <button id="loadLocal" class="ghost">Cargar guardado local</button>
+            <button id="saveLocal" class="ghost">Guardar local</button>
+          </div>
+          <div id="reportPreview" class="report-preview"></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h2>Tutorial integrado</h2><span class="badge soft">Uso recomendado</span></div>
+          <div id="tutorialContent" class="tutorial-content"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="tutorialDialog">
+    <div class="dialog-head"><h2>Tutorial rápido HidroSed Maestra</h2><button id="closeTutorial" class="ghost">Cerrar</button></div>
+    <div id="tutorialDialogContent" class="tutorial-content"></div>
+  </dialog>
+
+  <footer>
+    <p>HidroSed Maestra · Aplicación estática para análisis preliminar y apoyo técnico. Requiere validación profesional y contraste con antecedentes de terreno.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
